@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zalo AI Bot Enterprise | RAG & Mini CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-header">
+    <div class="brand-section">
+      <div class="brand-logo">🤖</div>
+      <div>
+        <div class="brand-title">Zalo <span>AI Bot Pro</span></div>
+        <div class="brand-tag">Enterprise RAG & Mini CRM</div>
+      </div>
+    </div>
+
+    <!-- Center Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="overview">
+        <span>📊 Tổng Quan</span>
+      </button>
+      <button class="tab-btn" data-tab="livechat">
+        <span>💬 Live Chat</span>
+      </button>
+      <button class="tab-btn" data-tab="knowledge">
+        <span>📚 Kho Tri Thức RAG</span>
+      </button>
+      <button class="tab-btn" data-tab="crm">
+        <span>👥 Khách Hàng (CRM)</span>
+      </button>
+      <button class="tab-btn" data-tab="webhook" style="display: none;">
+        <span>⚡ Cấu Hình Webhook</span>
+      </button>
+      <button class="tab-btn" data-tab="staff" style="display: none;">
+        <span>🛡️ Quản Trị Viên</span>
+      </button>
+    </nav>
+
+    <!-- User & Socket Real-time Status -->
+    <div class="user-status-section">
+      <div class="status-pill" id="socketStatusPill">
+        <span class="status-dot"></span>
+        <span id="socketStatusText">Đang kết nối...</span>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="headerUserAvatar">A</div>
+        <div class="user-info">
+          <span class="user-name" id="headerUserName">Admin</span>
+          <span class="user-role" id="headerUserRole">Quản trị viên</span>
+        </div>
+      </div>
+
+      <button class="btn-logout" id="btnLogout" title="Đăng xuất">Đăng xuất</button>
+    </div>
+  </header>
+
+  <!-- Main App Workspace -->
+  <main class="main-container">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: TỔNG QUAN (OVERVIEW) -->
+    <!-- ========================================== -->
+    <section class="tab-content active" id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue">👥</div>
+          <div class="stat-details">
+            <h4>Tổng Khách Hàng Zalo</h4>
+            <div class="stat-value" id="statTotalUsers">0</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon green">💬</div>
+          <div class="stat-details">
+            <h4>Tin Nhắn Hôm Nay</h4>
+            <div class="stat-value" id="statTodayMessages">0</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon amber">🎧</div>
+          <div class="stat-details">
+            <h4>CSKH Đang Can Thiệp</h4>
+            <div class="stat-value" id="statHumanMode">0</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon purple">🧠</div>
+          <div class="stat-details">
+            <h4>Đoạn Vector RAG (pgvector)</h4>
+            <div class="stat-value" id="statKnowledgeChunks">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">⚡ Hướng Dẫn Vận Hành Hệ Thống</h3>
+          </div>
+          <p style="color:var(--text-muted);line-height:1.7;margin-bottom:16px;">
+            Hệ thống đang hoạt động với kiến trúc đồng bộ:
+          </p>
+          <ul style="color:var(--text-muted);line-height:1.8;padding-left:20px;font-size:0.9rem;">
+            <li><strong>Webhook Zalo:</strong> Nhận tin nhắn Real-time qua <code>POST /webhook</code> kèm bảo mật MAC validation.</li>
+            <li><strong>AI Grounded RAG:</strong> Truy xuất chính xác thông tin từ kho tri thức PostgreSQL (vector 768 chiều) và mô hình Gemini Pro.</li>
+            <li><strong>Chuyển giao thông minh (Human Handoff):</strong> Tự động nhận diện ý định gặp nhân viên hoặc cho phép CSKH can thiệp trực tiếp từ màn hình Live Chat.</li>
+            <li><strong>Tự động phân loại (Auto-Tagging):</strong> Phân tích hội thoại để gắn thẻ hành vi (Hỏi giá, Kỹ thuật, Khách VIP...).</li>
+          </ul>
+        </div>
+
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">🔗 Thông Tin Kết Nối</h3>
+          </div>
+          <div style="font-size:0.85rem;color:var(--text-muted);display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <div style="font-size:0.75rem;color:var(--text-dim)">WEBHOOK URL CHO ZALO</div>
+              <code style="color:#818cf8;background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;display:block;margin-top:4px;">https://&lt;domain&gt;/webhook</code>
+            </div>
+            <div>
+              <div style="font-size:0.75rem;color:var(--text-dim)">AI EMBEDDING MODEL</div>
+              <span style="color:#34d399">text-embedding-004 (768 dims)</span>
+            </div>
+            <div>
+              <div style="font-size:0.75rem;color:var(--text-dim)">CƠ SỞ DỮ LIỆU VECTOR</div>
+              <span style="color:#fbbf24">PostgreSQL + HNSW Index</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: LIVE CHAT (GIÁM SÁT THỜI GIAN THỰC) -->
+    <!-- ========================================== -->
+    <section class="tab-content" id="tab-livechat">
+      <div class="chat-layout">
+        <!-- Sidebar: Hội thoại -->
+        <div class="conversation-sidebar">
+          <div class="sidebar-search-box">
+            <div class="search-input-wrapper">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchConvInput" placeholder="Tìm kiếm theo tên hoặc Zalo ID...">
+            </div>
+          </div>
+
+          <div class="filter-pills">
+            <button class="pill-btn active" data-filter="all">Tất cả</button>
+            <button class="pill-btn" data-filter="human">Cần CSKH</button>
+            <button class="pill-btn" data-filter="ai">AI Phục vụ</button>
+          </div>
+
+          <div class="conversation-list" id="conversationList">
+            <!-- Dynamic conversations rendered here -->
+          </div>
+        </div>
+
+        <!-- Chat Main Area -->
+        <div class="chat-main-area">
+          <!-- Chat Header -->
+          <div class="chat-header">
+            <div class="chat-header-user">
+              <div>
+                <div class="header-user-name" id="chatHeaderName">Chọn một hội thoại</div>
+                <div class="header-user-id" id="chatHeaderZaloId">Zalo ID: --</div>
+              </div>
+              <div id="chatHeaderTags" style="display:flex;align-items:center;margin-left:12px;"></div>
+            </div>
+
+            <!-- Human Handoff Switcher -->
+            <div class="handoff-control-bar" id="chatHandoffControls">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Chat Messages Body -->
+          <div class="chat-messages-container" id="chatMessagesContainer">
+            <div style="padding:40px;text-align:center;color:#6b7280;">Vui lòng chọn khách hàng từ danh sách bên trái để bắt đầu trò chuyện.</div>
+          </div>
+
+          <!-- Chat Input Bar -->
+          <div class="chat-input-bar">
+            <div class="chat-input-wrapper">
+              <textarea id="chatInput" rows="1" placeholder="Nhập tin nhắn phản hồi khách hàng (Enter để gửi)..."></textarea>
+            </div>
+            <button class="btn-send-chat" id="btnSendChat">
+              <span>Gửi Zalo</span>
+              <span>✈️</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: KHO TRI THỨC RAG (KNOWLEDGE BASE) -->
+    <!-- ========================================== -->
+    <section class="tab-content" id="tab-knowledge">
+      <div class="rag-layout">
+        <!-- Upload Form -->
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">📤 Tải Lên & Nhúng Tri Thức Vào pgvector</h3>
+          </div>
+          <form id="uploadKnowledgeForm">
+            <div class="upload-dropzone" id="knowledgeDropzone">
+              <div class="dropzone-icon">📁</div>
+              <div class="dropzone-text" id="dropzoneLabel">Kéo thả tệp hoặc bấm vào đây để chọn</div>
+              <div class="dropzone-sub">Hỗ trợ: PDF, Word (.docx), Văn bản (.txt, .md) - Tối đa 15MB</div>
+              <input type="file" id="knowledgeFileInput" accept=".pdf,.docx,.txt,.md,.json,.csv" style="display: none;">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tiêu đề tài liệu (Tùy chọn)</label>
+              <input type="text" id="knowledgeTitleInput" class="form-input" placeholder="Ví dụ: Bảng giá dịch vụ 2026, Chính sách bảo hành...">
+            </div>
+
+            <button type="submit" class="btn-primary" id="btnSubmitKnowledge">
+              <span>Tải Lên & Nhúng Vào pgvector</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- RAG Search Test Simulator -->
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">🔬 Giả Lập & Thử Nghiệm Truy Xuất Vector (RAG Test)</h3>
+          </div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">
+            Nhập câu hỏi để kiểm tra độ tương đồng ngữ nghĩa (Cosine Similarity) với các đoạn văn bản trong PostgreSQL:
+          </p>
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <input type="text" id="ragQueryInput" class="form-input" placeholder="Nhập câu hỏi thử nghiệm...">
+            <button class="pill-btn active" id="btnTestRAG" style="padding:10px 18px;font-size:0.85rem;">Kiểm Tra</button>
+          </div>
+
+          <div class="rag-test-results" id="ragTestResults">
+            <div style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:20px;">Kết quả truy vấn các đoạn tri thức liên quan nhất sẽ hiển thị tại đây.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Knowledge Documents Table -->
+      <div class="glass-box">
+        <div class="box-header">
+          <h3 class="box-title">📑 Danh Mục Tài Liệu Đã Nạp</h3>
+        </div>
+        <div class="data-table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Tiêu đề tài liệu</th>
+                <th>Tên tệp</th>
+                <th>Định dạng</th>
+                <th>Số đoạn (Chunks)</th>
+                <th>Ngày nạp</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="knowledgeDocsTableBody">
+              <!-- Dynamic docs list -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: QUẢN LÝ KHÁCH HÀNG (MINI CRM) -->
+    <!-- ========================================== -->
+    <section class="tab-content" id="tab-crm">
+      <div class="glass-box">
+        <div class="box-header">
+          <h3 class="box-title">👥 Danh Sách Khách Hàng Zalo & Thẻ Phân Loại</h3>
+        </div>
+
+        <div class="crm-header-controls">
+          <div class="search-input-wrapper" style="max-width:380px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="crmSearchInput" placeholder="Tìm theo tên hoặc Zalo ID...">
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;">
+            <select id="crmTagFilter" class="form-select" style="width:180px;" onchange="App.loadCRMUsers()">
+              <option value="">Tất cả thẻ</option>
+              <option value="Hỏi giá">Hỏi giá</option>
+              <option value="Tư vấn sản phẩm">Tư vấn sản phẩm</option>
+              <option value="Kỹ thuật">Kỹ thuật</option>
+              <option value="Khiếu nại">Khiếu nại</option>
+              <option value="Khách VIP">Khách VIP</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Khách hàng</th>
+                <th>Thẻ phân loại (CRM Tags)</th>
+                <th>Trạng thái</th>
+                <th>Tổng tin nhắn</th>
+                <th>Tương tác cuối</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="crmUsersTableBody">
+              <!-- Dynamic users list -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: QUẢN TRỊ VIÊN & NHÂN VIÊN CSKH -->
+    <!-- ========================================== -->
+    <section class="tab-content" id="tab-staff">
+      <div class="rag-layout">
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">➕ Tạo Tài Khoản Nhân Viên Mới</h3>
+          </div>
+          <form id="createStaffForm">
+            <div class="form-group">
+              <label class="form-label">Tên đăng nhập</label>
+              <input type="text" id="staffUsername" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Họ và tên nhân viên</label>
+              <input type="text" id="staffFullName" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mật khẩu</label>
+              <input type="password" id="staffPassword" class="form-input" required minlength="6">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phân quyền (RBAC)</label>
+              <select id="staffRole" class="form-select">
+                <option value="cskh">Nhân viên CSKH (Chỉ chat & xem khách hàng)</option>
+                <option value="admin">Quản trị viên (Toàn quyền quản lý RAG & hệ thống)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-primary">Tạo Tài Khoản</button>
+          </form>
+        </div>
+
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">🛡️ Danh Sách Nhân Viên & Quản Trị Viên</h3>
+          </div>
+          <div class="data-table-container">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Tên đăng nhập</th>
+                  <th>Họ và tên</th>
+                  <th>Vai trò</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tạo</th>
+                </tr>
+              </thead>
+              <tbody id="staffTableBody">
+                <!-- Dynamic staff list -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 6: CẤU HÌNH WEBHOOK ZALO -->
+    <!-- ========================================== -->
+    <section class="tab-content" id="tab-webhook">
+      <div class="rag-layout" style="margin-bottom:24px;">
+        <!-- Card 1: Webhook URL & Connection Information -->
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">⚡ Đường Dẫn Webhook Kết Nối Zalo</h3>
+          </div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:14px;">
+            Sao chép đường dẫn này và dán vào mục <strong>Webhook URL</strong> trên cổng Zalo Bot Platform (<a href="https://bot.zapps.me" target="_blank" style="color:#818cf8;">bot.zapps.me</a>) hoặc Cloudflare:
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">Webhook URL (HTTPS):</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="webhookUrlDisplay" class="form-input" readonly style="font-family:monospace;background:rgba(0,0,0,0.3);color:#34d399;font-weight:600;">
+              <button class="pill-btn active" id="btnCopyWebhookUrl" style="padding:10px 16px;white-space:nowrap;">📋 Sao Chép</button>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:14px;font-size:0.82rem;color:var(--text-muted);display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span>Trạng thái kết nối Zalo Bot:</span>
+              <span id="webhookStatusBadge" class="status-pill" style="padding:2px 10px;font-size:0.75rem;">Đang kiểm tra...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span>Sự kiện nhận gần nhất:</span>
+              <span id="webhookLastActivity" style="color:#fff;font-weight:500;">Chưa có</span>
+            </div>
+          </div>
+
+          <!-- Webhook Simulator Box -->
+          <div style="margin-top:20px;border-top:1px solid var(--border-color);padding-top:16px;">
+            <div style="font-size:0.88rem;font-weight:600;margin-bottom:6px;color:#a5b4fc;">🧪 Giả Lập Gửi Webhook Thử Nghiệm</div>
+            <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:10px;">
+              Gửi tin nhắn mẫu để kiểm tra bot tự động xử lý mà không cần mở điện thoại:
+            </p>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="simulateMsgInput" class="form-input" placeholder="Nhập tin nhắn test..." value="Xin chào bot, cho tôi hỏi bảng giá dịch vụ!">
+              <button class="pill-btn" id="btnSimulateWebhook" style="background:#4f46e5;color:#fff;white-space:nowrap;padding:10px 14px;">Gửi Test 🚀</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Zalo Bot Platform Credentials & MAC Security -->
+        <div class="glass-box">
+          <div class="box-header">
+            <h3 class="box-title">🔐 Thông Tin Xác Thực Bot & Chữ Ký MAC</h3>
+          </div>
+          <form id="webhookConfigForm">
+            <div class="form-group">
+              <label class="form-label">Zalo Bot Token</label>
+              <div style="position:relative;">
+                <input type="password" id="cfgBotToken" class="form-input" placeholder="Nhập Zalo Bot Token mới...">
+                <button type="button" class="btn-tag-action" onclick="App.togglePasswordVisibility('cfgBotToken')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9ca3af;cursor:pointer;">👁️</button>
+              </div>
+              <small style="color:var(--text-dim);font-size:0.72rem;">Đang sử dụng: <span id="lblCurrentBotToken" style="color:#a5b4fc;font-family:monospace;">--</span></small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Zalo App Secret (Khóa bí mật MAC)</label>
+              <div style="position:relative;">
+                <input type="password" id="cfgAppSecret" class="form-input" placeholder="Nhập App Secret mới...">
+                <button type="button" class="btn-tag-action" onclick="App.togglePasswordVisibility('cfgAppSecret')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9ca3af;cursor:pointer;">👁️</button>
+              </div>
+              <small style="color:var(--text-dim);font-size:0.72rem;">Đang sử dụng: <span id="lblCurrentAppSecret" style="color:#a5b4fc;font-family:monospace;">--</span></small>
+            </div>
+
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:14px;background:rgba(255,255,255,0.03);padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--border-color);">
+              <input type="checkbox" id="cfgVerifyMac" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;">
+              <div>
+                <label for="cfgVerifyMac" style="font-size:0.85rem;font-weight:600;cursor:pointer;">Bật kiểm tra chữ ký MAC (Bảo mật HMAC-SHA256)</label>
+                <div style="font-size:0.75rem;color:var(--text-dim);">Tắt khi thử nghiệm trên localhost hoặc Cloudflare nếu gặp lỗi chữ ký, Bật khi vận hành chính thức</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:20px;">
+              <button type="submit" class="btn-primary" style="flex:2;">💾 Lưu Cấu Hình</button>
+              <button type="button" class="pill-btn" id="btnTestZaloApi" style="flex:1;background:rgba(16,185,129,0.2);color:#34d399;border-color:rgba(16,185,129,0.4);font-weight:600;">🔄 Test Zalo API</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Card 3: Webhook Live Event Logs Table -->
+      <div class="glass-box">
+        <div class="box-header">
+          <h3 class="box-title">📡 Nhật Ký Sự Kiện Webhook Thời Gian Thực (Live Logs)</h3>
+          <div style="display:flex;gap:8px;">
+            <button class="pill-btn" onclick="App.loadWebhookLogs()">🔄 Làm Mới</button>
+            <button class="btn-icon-danger" onclick="App.clearWebhookLogs()">🗑️ Xóa Nhật Ký</button>
+          </div>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;">
+          Danh sách các request Webhook thực tế do Zalo hoặc Cloudflare gửi về máy chủ của bạn:
+        </p>
+        <div class="data-table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Thời gian</th>
+                <th>Loại sự kiện</th>
+                <th>Người gửi (Sender ID)</th>
+                <th>Trạng thái</th>
+                <th>Chi tiết dữ liệu (Payload)</th>
+              </tr>
+            </thead>
+            <tbody id="webhookLogsTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Payload Viewer Modal -->
+  <div class="modal-overlay" id="payloadModal">
+    <div class="modal-card" style="max-width:640px;">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Chi Tiết Webhook Payload JSON</h3>
+        <button class="btn-close-modal" onclick="document.getElementById('payloadModal').classList.remove('active')">×</button>
+      </div>
+      <pre id="payloadModalContent" style="background:#0b0f19;color:#a5b4fc;padding:16px;border-radius:var(--radius-md);max-height:420px;overflow-y:auto;font-family:monospace;font-size:0.82rem;line-height:1.5;"></pre>
+    </div>
+  </div>
+
+  <!-- Login Modal Overlay -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 style="font-size:1.25rem;font-weight:700">Đăng Nhập Trang Quản Trị</h2>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:20px;">
+        Vui lòng đăng nhập với tài khoản Admin hoặc CSKH để truy cập hệ thống.
+      </p>
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label">Tên đăng nhập</label>
+          <input type="text" id="loginUsername" class="form-input" value="admin" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu</label>
+          <input type="password" id="loginPassword" class="form-input" value="Admin@123456" required>
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top:10px;">Đăng Nhập</button>
+      </form>
+      <div style="margin-top:16px;font-size:0.75rem;color:var(--text-dim);text-align:center;">
+        Tài khoản mặc định: <code>admin</code> / <code>Admin@123456</code> hoặc <code>cskh</code> / <code>Cskh@123456</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Alert Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- App Scripts -->
+  <script src="/js/api.js"></script>
+  <script src="/js/socket.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
