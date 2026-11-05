@@ -72,6 +72,56 @@ class WebhookConfigController {
   }
 
   /**
+   * GET /api/webhook-config/zalo-info
+   * Fetch current bot and webhook info from Zalo API
+   */
+  async getZaloInfo(req, res) {
+    try {
+      const [botRes, webhookRes] = await Promise.allSettled([
+        zaloService.getMe(),
+        zaloService.getWebhookInfo()
+      ]);
+
+      return res.json({
+        success: true,
+        bot: botRes.status === 'fulfilled' ? botRes.value : null,
+        webhook: webhookRes.status === 'fulfilled' ? webhookRes.value : null,
+        error: botRes.status === 'rejected' ? botRes.reason?.message : null
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: `Lỗi lấy thông tin Zalo Bot: ${err.message}`
+      });
+    }
+  }
+
+  /**
+   * POST /api/webhook-config/set-webhook
+   * Set Webhook URL directly via Zalo Bot API
+   */
+  async setWebhook(req, res) {
+    const { webhookUrl, secretToken } = req.body;
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Thiếu webhookUrl' });
+    }
+
+    try {
+      const result = await zaloService.setWebhook(webhookUrl, secretToken);
+      return res.json({
+        success: true,
+        message: 'Đăng ký Webhook với Zalo Bot Platform thành công!',
+        result
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: `Lỗi cấu hình Webhook: ${err.response?.data?.description || err.message}`
+      });
+    }
+  }
+
+  /**
    * GET /api/webhook-config/logs
    * Get recent incoming webhook events log
    */

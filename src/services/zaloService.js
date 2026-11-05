@@ -8,14 +8,87 @@ class ZaloService {
   }
 
   get token() {
-    return settingsService.get('ZALO_BOT_TOKEN') || env.ZALO_BOT_TOKEN || '';
+    let raw = settingsService.get('ZALO_BOT_TOKEN') || env.ZALO_BOT_TOKEN || '';
+    if (!raw) return '';
+    raw = raw.trim();
+    // Handle ${TOKEN} wrap
+    if (raw.startsWith('${') && raw.endsWith('}')) {
+      raw = raw.slice(2, -1).trim();
+    }
+    // Handle accidental 'bot' prefix in token: e.g. bot12345:abc
+    if (raw.startsWith('bot') && raw.length > 10 && raw.includes(':')) {
+      raw = raw.slice(3).trim();
+    }
+    return raw;
   }
 
   /**
    * Helper to get full endpoint URL
+   * Format: https://bot-api.zaloplatforms.com/bot<TOKEN>/<action>
    */
   getEndpoint(action) {
-    return `${this.baseUrl}/bot${this.token}/${action}`;
+    const base = (this.baseUrl || 'https://bot-api.zaloplatforms.com').replace(/\/+$/, '');
+    return `${base}/bot${this.token}/${action}`;
+  }
+
+  /**
+   * Get Bot information from Zalo Bot Platform (getMe)
+   */
+  async getMe() {
+    if (!this.token) {
+      throw new Error('Chưa cấu hình ZALO_BOT_TOKEN');
+    }
+    const url = this.getEndpoint('getMe');
+    const res = await axios.get(url, { timeout: 10000 });
+    return res.data;
+  }
+
+  /**
+   * Get current Webhook information (getWebhookInfo)
+   */
+  async getWebhookInfo() {
+    if (!this.token) {
+      throw new Error('Chưa cấu hình ZALO_BOT_TOKEN');
+    }
+    const url = this.getEndpoint('getWebhookInfo');
+    const res = await axios.get(url, { timeout: 10000 });
+    return res.data;
+  }
+
+  /**
+   * Register Webhook URL with Zalo Bot Platform (setWebhook)
+   * @param {string} webhookUrl
+   * @param {string} [secretToken]
+   */
+  async setWebhook(webhookUrl, secretToken = '') {
+    if (!this.token) {
+      throw new Error('Chưa cấu hình ZALO_BOT_TOKEN');
+    }
+    if (!webhookUrl) {
+      throw new Error('Thiếu webhookUrl');
+    }
+    const url = this.getEndpoint('setWebhook');
+    const payload = { url: webhookUrl };
+    if (secretToken) {
+      payload.secret_token = secretToken;
+    }
+    const res = await axios.post(url, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000
+    });
+    return res.data;
+  }
+
+  /**
+   * Delete Webhook registration from Zalo Bot Platform (deleteWebhook)
+   */
+  async deleteWebhook() {
+    if (!this.token) {
+      throw new Error('Chưa cấu hình ZALO_BOT_TOKEN');
+    }
+    const url = this.getEndpoint('deleteWebhook');
+    const res = await axios.post(url, {}, { timeout: 10000 });
+    return res.data;
   }
 
   /**
@@ -30,13 +103,12 @@ class ZaloService {
     }
 
     try {
-      // Test getMe or getUpdates
-      const url = this.getEndpoint('getMe');
-      const res = await axios.get(url, { timeout: 10000 });
+      const data = await this.getMe();
+      const botName = data?.result?.display_name || data?.result?.account_name || 'Zalo Bot';
       return {
         success: true,
-        message: 'Kết nối Zalo Bot Platform thành công!',
-        data: res.data
+        message: `Kết nối Zalo Bot Platform thành công! (${botName})`,
+        data: data
       };
     } catch (err) {
       // Fallback test getUpdates
